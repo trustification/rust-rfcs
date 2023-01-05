@@ -18,73 +18,25 @@ At present, crates.io provides the following information about published crates:
 * checksum of crate contents
 * crate author/ownership
 
-The verification of the above information relies on a third party (crates.io) not being compromised, which unfortunately happened for RubyGems and NPM. 
+The verification of the above information relies on a third party (crates.io) not being compromised. In the event that crates.io is compromised, crates pulled from crates.io cannot be verified. Adding signatures in crates.io metadata reduces the severance of such a compromise, as individual crates can still be verified.
 
 Signing and verifying crates puts an extra burden on crate maintainers, who would have to manage their own keys and manually verify crate signatures.
 
-This is where a project like Sigstore comes in. It provides a key management service named Fulcio, which integrates with OpenID Connect services to identify the author and generate 
-temporary key-pair derived from a trust root. The Fulcio service can either be run by crates.io or a separate organization, such as the public Fulcio service. Sigstore also provides Rekor, a 
-tamper-free transparency log, which is used to record the signing key. These records can later be audited.
+This is where a project like Sigstore comes in. It provides a key management service named Fulcio, which integrates with OpenID Connect services to identify the author and generate temporary key-pair derived from a trust root. The Fulcio service can either be run by crates.io or a separate organization, such as the public Fulcio service. Sigstore also provides Rekor, a tamper-free transparency log, which is used to record the signing key. These records can later be audited.
 
-The proposal is to improve the current situation, by supporting these workflows for users of `cargo` and `crates.io` using Sigstore:
+The proposal is to improve the current situation, by supporting these workflows for users of `cargo` and `crates.io`:
 
 * Signing crates when publishing
 * Verifying crates and their dependencies when building
 
+This will provide a way to verify authorship of individual crates not relying on crates.io, and lets the crate maintainers and users choose their source of trust. Some users may manage their own Sigstore instance for full control, or rely on other instances to keep things simple but at the same risk level as today.
 
-This will provide a way to verify authorship independently of crates.io, but lets the crate maintainers and users to pick their poison: manage their own Sigstore instance for full control, or rely on other instances to simplify their workflow but at a greater risk.
-
-Another benefit of this work, not specific to Rust: Package management for programming languages such as Java (Maven), JavaScript (NPM) or Python (Pip) are on their way to support Sigstore. Having the same integration for Rust, means that a company can use the same tooling for signature verification and auditing, and don't have to make the same mistakes when implementing this.
+Another benefit of this work, not specific to Rust: Package management for programming languages such as Java (Maven), JavaScript (NPM) or Python (Pip) are on their way to support Sigstore. Having the same integration for Rust, means that a company can use the same tooling for key management and audit logs across multiple package managers, and don't have to make the same mistakes when implementing this.
 
 <!-- Why are we doing this? What use cases does it support? What is the expected outcome? -->
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
-
-## Signing
-
-To sign a package when publishing, first configure your signing settings:
-
-```
-[signing]
-fulcio = "https://fulcio.sigstore.dev"
-rekor = "https://rekor.sigstore.dev"
-issuer = "https://oauth2.sigstore.dev/auth"
-ConnectorID = "https://github.com/login/oauth"
-```
-
-Next, publish your crate using the `sign` flag:
-
-```
-cargo publish --sign
-```
-
-This will perform the following steps:
-
-* Open your browser window to GitHub OAuth to verify your identity and retrieve a token
-* Pass the token to Fulcio to generate a key/cert for signing
-* Sign the .crate and publish to crates.io
-* Publish signing cert to Rekor
-
-
-## Verification
-
-To verify a crate during install:
-
-```
-cargo install <package> --verify
-```
-
-When building:
-
-```
-cargo build --verify
-```
-
-These will verify the signature of all crates that contain signatures on crates.io. 
-
-TODO:
-- Describing the data flow
 
 <!--
 Explain the proposal as if it was already included in the language and you were teaching it to another Rust programmer. That generally means:
@@ -98,6 +50,58 @@ Explain the proposal as if it was already included in the language and you were 
 
 For implementation-oriented RFCs (e.g. for compiler internals), this section should focus on how compiler contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms. -->
 -->
+
+As of YYYY/MM/DD, crates.io and cargo supports signing and verifying crates. The process of `signing` involves generating a signature for a crate, using a private key, and attaching that signature when publishing a crate. The process of `verification` involves downloading a crate (using cargo) and using a _trusted_ public key to verify the authenticity (the signer) and integrity (the contents) of a crate.
+
+Cargo and crates.io supports both of these flows. As a crate publisher, by signing crates you provide additional security for consumers of your crate. As a crate consumer, by verifying crates you can reduce the impact of a compromise of crates.io.
+
+To simplify key management for users, cargo supports using [Sigstore](https://sigstore.dev) as a way to generate keys based on OIDC identities (GitHub, Google etc.) and as an immutable log that can be audited and monitored.
+
+## Configuring
+
+To configure cargo for using Sigstore, edit the configuration file in `$HOME/.cargo/sigstore.toml`:
+
+```
+fulcio = "https://fulcio.sigstore.dev"
+rekor = "https://rekor.sigstore.dev"
+issuer = "https://oauth2.sigstore.dev/auth"
+connector = "https://github.com/login/oauth"
+```
+
+## Signing
+
+To sign and publish your crate, pass the `--signer` flag to `publish`:
+
+```
+cargo publish --signer sigstore
+```
+
+This will perform the following steps:
+
+1. Authenticate you using the preferred flow (`connector` setting). In this case, it will open your browser window to GitHub OAuth.
+1. Pass the access token to Sigstore (which authorizes the user) in order to generate a key and cert for signing the crate.
+1. Sign the .crate using the temporary key and cert.
+1. Publish the crate to crates.io with the signature attached.
+1. Publish the signing cert to the Sigstore transparency log.
+
+The `--sign` flag may support alternative ways to sign, like manually providing the key or using `gnupg`. Cargo could have a default signer set. In the event of not using sigstore, some of the above steps would be skipped.
+
+## Verification
+
+To verify signatures for a crate using the sigstore signer:
+
+```
+cargo verify-signature [<crate>] [--check-dependencies] --signer sigstore
+```
+
+This will perform the following steps and checks:
+
+1. Connect to crates.io to retrieve the crate and its signature.
+1. Verify that the crate is signed by the signature.
+1. Check that the signer is trusted.
+1. Check that the signature is present in the Sigstore transparency log.
+
+The command will fail if the crate and optionally its dependencies does not have verifiable signatures. In the same way as for publish, alternative verification methods could be supported.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
