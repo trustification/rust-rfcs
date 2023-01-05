@@ -117,22 +117,45 @@ The section should return to the examples given in the previous section, and exp
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Why should we *not* do this?
+<!-- Why should we *not* do this? -->
+
+Introducing crate signatures may cause headaches for crate maintainers if enforced. Therefore, the signing and verification should be an optional feature that doesn't impact todays workflow.
+
+The usefulness of signatures are also dependent on package maintainers using them. If only a small fraction of crates end up using signatures, maybe it will have minimal impact. On the other hand, having the capability at least provides a mechanism that can easily be added to existing crates.
+
+Supporting different systems for signing and verification has a drawback that it could be harder to standardize and use the information on crates.io itself vs. having only one provider like Sigstore.
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
+<!--
 - Why is this design the best in the space of possible designs?
 - What other designs have been considered and what is the rationale for not choosing them?
 - What is the impact of not doing this?
-- If this is a language proposal, could this be done in a library or macro instead? Does the proposed change make Rust code easier or harder to read, understand, and maintain?
+-->
+
+This design takes one step in the direction of signing and verification of crates. Some maintainers may not want to use Sigstore, in which case this would allow alternative key management systems. However, Sigstore is in the process of being supported by [NPM](https://thenewstack.io/npm-to-adopt-sigstore-for-software-supply-chain-security/), [Maven](https://blog.sonatype.com/maven-central-and-sigstore) and [Python](https://www.python.org/download/sigstore/), and it has a lot of maintainers behind it, so it makes sense to support this provider first.
+
+The impact of not doing this leaves crate owners vulnerable to a crates.io compromise. Organizations that need to have way to verify crate integrity will be left to build their own solution and private package registries.
 
 # Prior art
 [prior-art]: #prior-art
 
-Discuss prior art, both the good and the bad, in relation to this proposal.
-A few examples of what this can include are:
+There have been discussions on this topic in the past:
 
+* https://github.com/rust-lang/crates.io/issues/75 - this issue raises the initial concern
+* https://github.com/sigstore/community/issues/25 - contains an attempt at sigstore support, but focusing on rustup because cargo maintainers being overloaded
+* https://github.com/rust-lang/cargo/issues/4768 - G
+
+[NPM](https://thenewstack.io/npm-to-adopt-sigstore-for-software-supply-chain-security/), [Maven](https://blog.sonatype.com/maven-central-and-sigstore) and Python are adopting. For organizations, integrating with Sigstore means that they can reuse the same infrastructure for verifying and auditing their software across programming languages.
+
+## Articles and papers
+
+The [Sigstore Blog](https://blog.sigstore.dev/) contains a lot of articles on the usage of Sigstore. The GitHub tema has published a few [blog posts](https://github.blog/2022-10-25-why-were-excited-about-the-sigstore-general-availability/) on Sigstore. 
+
+A [paper](https://dl.acm.org/doi/abs/10.1145/3548606.3560596) about Sigstore on ACM.
+
+<!--
 - For language, library, cargo, tools, and compiler proposals: Does this feature exist in other programming languages and what experience have their community had?
 - For community proposals: Is this done by some other community and what were their experiences with it?
 - For other teams: What lessons can we learn from what other communities have done here?
@@ -142,20 +165,30 @@ This section is intended to encourage you as an author to think about the lesson
 If there is no prior art, that is fine - your ideas are interesting to us whether they are brand new or if it is an adaptation from other languages.
 
 Note that while precedent set by other languages is some motivation, it does not on its own motivate an RFC.
-Please also take into consideration that rust sometimes intentionally diverges from common language features.
+Please also take into consideration that rust sometimes intentionally diverges from common language features. 
+-->
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
+- Should crates.io use the signing information to enforce that the signature of crate-to-be-published matches the publisher?
+
+
+Currently considered out of scope:
+
+* 
+<!--
 - What parts of the design do you expect to resolve through the RFC process before this gets merged?
 - What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
 - What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?
+-->
 
 # Future possibilities
 [future-possibilities]: #future-possibilities
 
 One possible evolution of this work is for the crates.io team to use the The Update Framework (TUF) to manage trust roots for a Fulcio instance, which would make it independent of the public Sigstore instances. 
 
+<!--
 Think about what the natural extension and evolution of your proposal would
 be and how it would affect the language and project as a whole in a holistic
 way. Try to use this section as a tool to more fully consider all possible
@@ -173,3 +206,4 @@ Note that having something written down in the future-possibilities section
 is not a reason to accept the current or a future RFC; such notes should be
 in the section on motivation or rationale in this or subsequent RFCs.
 The section merely provides additional information.
+-->
