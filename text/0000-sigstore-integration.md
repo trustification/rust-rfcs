@@ -8,6 +8,12 @@
 
 This feature enables cargo users to sign crates, and verify signatures of their dependencies, while crates.io will gain the ability to store signatures for published crates.
 
+TODO:
+* Expand on flows showing figures how cargo and crates.io interacts with Sigstore
+* Expand on future usage of the data
+* Explore a few alternatives
+
+
 # Motivation
 [motivation]: #motivation
 
