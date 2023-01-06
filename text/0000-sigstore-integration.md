@@ -120,10 +120,11 @@ The following components need changing for crates.io:
 
 The following changes must be made to cargo when publishing a crate:
 
-1. Authenticate the publisher using GitHub to retrieve token
-1. Generate the temporary signing keys from Fulcio with token
-1. Sign the generate .crate file using signing keys
-1. Attach signature, e-mail and certificate to publish request
+1. Authenticate the publisher using Sigstore OIDC to retrieve a token
+1. Generate the temporary key and certificate request
+1. Generate a certificate signing request and pass with token to Sigstore Fulcio. 
+1. Sign the generated .crate file using the private key
+1. Attach signature, e-mail and certificate to crates.io publish request
 
 The following changes must be made to cargo when buildling/verifying a crate:
 
