@@ -28,18 +28,21 @@ The verification of the above information relies on a third party (crates.io) no
 
 However, signing and verifying crates have traditionally been an extra burden on crate maintainers, who would have to manage their own keys and manually verify crate signatures.
 
-Sigstore is an open source project run by the Open Source Security Foundation (OpenSSF), and provides a solution to the above problems. It provides a key management service, Fulcio, which integrates with OpenID Connect services to identify the author and generate temporary key-pair derived from a trust root. Sigstore also provides a tamper-free transparency log, Rekor, which is used to record the signing certificate along with other information extracted from the OpenID token. These records can later be audited.
+Sigstore is an open source project run by the Open Source Security Foundation (OpenSSF), and provides a solution to the above problems. It provides a key management service, Fulcio, which integrates with OpenID Connect services to identify the author and generate a key used for signing. Sigstore also provides a tamper-free transparency log, Rekor, which is used to record the signing certificate along with other information extracted from the OpenID token. These records can later be audited.
+
+End users can use additional projects like [in-toto](https://in-toto.io/) to build more advanced verification and attestation of software.
 
 The proposal is to improve the current situation, by supporting these workflows for users of `cargo` and `crates.io`:
 
 * Automatic signing of crates when publishing by crate publishers
-* Verification of crates and their dependencies by crate consumers
+* Automatic verification of crates and their dependencies by crate consumers
 
 The Sigstore project provides publicly available instance of both Fulcio and Rekor, which avoid overloading crates.io maintainers with setting up additional infrastructure. 
 
 Since crates.io already uses GitHub authenticating users, adding automatic signing based on a GitHub ID is not a significant change for users.
 
 The expected outcome of this work is for cargo to automatically sign crates when published, unless opted out.
+
 <!-- Why are we doing this? What use cases does it support? What is the expected outcome? -->
 
 # Guide-level explanation
@@ -66,7 +69,7 @@ To simplify key management for users, cargo supports using [Sigstore](https://si
 
 ## Configuring
 
-By default, cargo will use the publicly available Sigstore instances together with GitHub as the identity provider. To override (if using a different registry), the `$HOME/.cargo/sigstore.toml` file can be configured with the location of Sigstore and identity services:
+By default, cargo will use the publicly available Sigstore instances together with GitHub as the identity provider. To override (if using a different registry than crates.io), the `$HOME/.cargo/sigstore.toml` file can be configured with the location of Sigstore and identity services:
 
 ```
 fulcio = "https://fulcio.sigstore.dev"
@@ -118,11 +121,12 @@ The crates.io and cargo types for new crates, will need to be modified to includ
 
 In the event that the crate is not being signed, these fields may be optional/null.
 
-The following components need changing for crates.io:
 
-1. Additional columns must be added to the PostgreSQL database
-1. HTTP API must handle a new version of NewCratePublish request with the signature data
-1. The HTTP handler verifies that the signer is allowed to sign the crate
+## Cargo publish flow
+
+The cargo publish flow is summarized below:
+
+![publish flow](https://raw.githubusercontent.com/lulf/rfc-resources/main/sigstore/cargo_sigstore-publish.drawio.png)
 
 The following changes must be made to cargo when publishing a crate:
 
@@ -131,6 +135,25 @@ The following changes must be made to cargo when publishing a crate:
 1. Generate a certificate signing request and pass with token to Sigstore Fulcio. 
 1. Sign the generated .crate file using the private key
 1. Attach signature, e-mail and certificate to crates.io publish request
+
+
+### crates.io flow
+
+The crates.io sub-flow on publish is described below:
+
+![crates.io flow](https://raw.githubusercontent.com/lulf/rfc-resources/main/sigstore/cargo_sigstore-crates.io.drawio.png)
+
+The following components need changing for crates.io:
+
+1. Additional columns must be added to the PostgreSQL database
+1. HTTP API must handle a new version of NewCratePublish request with the signature data
+1. The HTTP handler verifies that the signer is allowed to sign the crate
+
+## Cargo verify flow
+
+The cargo flow during verification is shown below:
+
+![verify flow](https://raw.githubusercontent.com/lulf/rfc-resources/main/sigstore/cargo_sigstore-verify.drawio.png)
 
 The following changes must be made to cargo when buildling/verifying a crate:
 
