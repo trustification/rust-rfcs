@@ -43,23 +43,9 @@ The expected outcome of this work is for cargo to automatically sign crates when
  
  [This article](https://dlorenc.medium.com/using-the-update-framework-in-sigstore-dc393cfe6b52) does a good job of showing the options.
  
-<!-- Why are we doing this? What use cases does it support? What is the expected outcome? -->
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
-
-<!--
-Explain the proposal as if it was already included in the language and you were teaching it to another Rust programmer. That generally means:
-
-- Introducing new named concepts.
-- Explaining the feature largely in terms of examples.
-- Explaining how Rust programmers should *think* about the feature, and how it should impact the way they use Rust. It should explain the impact as concretely as possible.
-- If applicable, provide sample error messages, deprecation warnings, or migration guidance.
-- If applicable, describe the differences between teaching this to existing Rust programmers and new Rust programmers.
-- Discuss how this impacts the ability to read, understand, and maintain Rust code. Code is read and modified far more often than written; will the proposed feature make code easier to maintain?
-
-For implementation-oriented RFCs (e.g. for compiler internals), this section should focus on how compiler contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms. -->
--->
 
 Crate signatures and verifications is a way to tie authenticity and integrity of a crate based on public key cryptography. The impliciation of this feature is that, as an end user, you can be sure that the crates that you download from crates.io have not been tampered with, and that they are signed by the correct owner of the package. 
 
@@ -174,20 +160,8 @@ These crate use `reqwest` and some async Rust. To handle this, we can either:
 * Add the necessary dependencies to cargo with the goal of replacing the curl with reqwest to avoid multiple HTTP clients in use
 * Use the lower level APIs in sigstore-rs and implement the HTTP interaction using curl which is used by cargo today. 
 
-<!--
-This is the technical portion of the RFC. Explain the design in sufficient detail that:
-
-- Its interaction with other features is clear.
-- It is reasonably clear how the feature would be implemented.
-- Corner cases are dissected by example.
-
-The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work.
- -->
-
 # Drawbacks
 [drawbacks]: #drawbacks
-
-<!-- Why should we *not* do this? -->
 
 Cargo may be slower if signing and verification is enabled by default. A possible solution could be to make it opt-in, but the drawback is that fewer crates will be signed.
 
@@ -198,17 +172,11 @@ There are other approaches to key management out there, such as GPG. However, th
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-<!--
-- Why is this design the best in the space of possible designs?
-- What other designs have been considered and what is the rationale for not choosing them?
-- What is the impact of not doing this?
--->
-
-This design takes one step in the direction of signing and verification of crates. Some maintainers may not want to use Sigstore, in which case this would allow alternative key management systems. However, Sigstore is in the process of being supported by [NPM](https://thenewstack.io/npm-to-adopt-sigstore-for-software-supply-chain-security/), [Maven](https://blog.sonatype.com/maven-central-and-sigstore) and [Python](https://www.python.org/download/sigstore/), and it has a lot of maintainers behind it, so it makes sense to support this provider first.
+Sigstore is in the process of being supported by [NPM](https://thenewstack.io/npm-to-adopt-sigstore-for-software-supply-chain-security/), [Maven](https://blog.sonatype.com/maven-central-and-sigstore) and [Python](https://www.python.org/download/sigstore/), and it has a large community.
 
 The impact of not doing this leaves crate owners vulnerable to a crates.io compromise. Organizations that need to have way to verify crate integrity will be left to build their own solution and private package registries.
 
-One specific alternative is to adopt [TUF](https://theupdateframework.io/) without Sigstore, but managing a full TUF root can be a lot to manage. RFCs such as [this](https://github.com/withoutboats/rfcs/pull/7) describes using TUF for signing the crates.io index, and later signing crates themselves. 
+One specific alternative is to adopt [TUF](https://theupdateframework.io/) without Sigstore, but managing a full TUF root can be a lot for an already busy crates.io team. RFCs such as [this](https://github.com/withoutboats/rfcs/pull/7) describes using TUF for signing the crates.io index, and later signing crates themselves. Integration with Sigstore does not necessarily rule out the use of TUF for managing a signed crates.io index later, and there is ongoing work on making TUF and Sigstore play nicely together.
 
 # Prior art
 [prior-art]: #prior-art
@@ -230,19 +198,6 @@ The GitHub tema has published a few [blog posts](https://github.blog/2022-10-25-
 
 A [paper](https://dl.acm.org/doi/abs/10.1145/3548606.3560596) about Sigstore on ACM.
 
-<!--
-- For language, library, cargo, tools, and compiler proposals: Does this feature exist in other programming languages and what experience have their community had?
-- For community proposals: Is this done by some other community and what were their experiences with it?
-- For other teams: What lessons can we learn from what other communities have done here?
-- Papers: Are there any published papers or great posts that discuss this? If you have some relevant papers to refer to, this can serve as a more detailed theoretical background.
-
-This section is intended to encourage you as an author to think about the lessons from other languages, provide readers of your RFC with a fuller picture.
-If there is no prior art, that is fine - your ideas are interesting to us whether they are brand new or if it is an adaptation from other languages.
-
-Note that while precedent set by other languages is some motivation, it does not on its own motivate an RFC.
-Please also take into consideration that rust sometimes intentionally diverges from common language features. 
--->
-
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
@@ -250,11 +205,6 @@ Please also take into consideration that rust sometimes intentionally diverges f
 * Opt-in or opt-out of signing and/or verification
 * How does it relate to TUF for signing crates.io index?
 
-<!--
-- What parts of the design do you expect to resolve through the RFC process before this gets merged?
-- What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?
--->
 
 # Future possibilities
 [future-possibilities]: #future-possibilities
@@ -265,22 +215,3 @@ Extending other cargo commands to make use of the information stored in the tran
 
 Integrating with [in-toto.io](https://in-toto.io) to provide more advanced attestation of artifacts.
 
-<!--
-Think about what the natural extension and evolution of your proposal would
-be and how it would affect the language and project as a whole in a holistic
-way. Try to use this section as a tool to more fully consider all possible
-interactions with the project and language in your proposal.
-Also consider how this all fits into the roadmap for the project
-and of the relevant sub-team.
-
-This is also a good place to "dump ideas", if they are out of scope for the
-RFC you are writing but otherwise related.
-
-If you have tried and cannot think of any future possibilities,
-you may simply state that you cannot think of anything.
-
-Note that having something written down in the future-possibilities section
-is not a reason to accept the current or a future RFC; such notes should be
-in the section on motivation or rationale in this or subsequent RFCs.
-The section merely provides additional information.
--->
