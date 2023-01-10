@@ -31,7 +31,7 @@ Sigstore is an open source project run by the Open Source Security Foundation (O
 
 End users can use additional projects like [in-toto](https://in-toto.io/) to build more advanced verification and attestation of software.
 
-The proposal is to improve the current situation, by supporting these workflows for users of `cargo` and `crates.io`:
+The proposal is to improve on the current situation, by supporting these workflows for users of `cargo` and `crates.io`:
 
 * Automatic signing of crates when publishing by crate publishers
 * Automatic verification of crates and their dependencies by crate consumers
@@ -41,6 +41,11 @@ The Sigstore project provides publicly available instance of both Fulcio and Rek
 Since crates.io already uses GitHub authenticating users, adding automatic signing based on a GitHub ID is not a significant change for users.
 
 The expected outcome of this work is for cargo to automatically sign crates when published, unless opted out.
+
+## What about TUF (The Update Framework)? 
+
+ TUF is a set of defined attacks and threat models specific to software distribution systems, and a cleverly designed set of protocols to protect against them. You can use TUF to manage the root keys of a Sigstore instance, just like the [public Sigstore instance](https://blog.sigstore.dev/a-new-kind-of-trust-root-f11eeeed92ef).
+ 
 
 <!-- Why are we doing this? What use cases does it support? What is the expected outcome? -->
 
@@ -60,11 +65,11 @@ Explain the proposal as if it was already included in the language and you were 
 For implementation-oriented RFCs (e.g. for compiler internals), this section should focus on how compiler contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms. -->
 -->
 
-As of YYYY/MM/DD, crates.io and cargo supports signing and verifying crates. The process of `signing` involves generating a signature for a crate, using a private key, and attaching that signature when publishing a crate. The process of `verification` involves downloading a crate (using cargo) and using a _trusted_ public key to verify the authenticity (the signer) and integrity (the contents) of a crate. 
+Crate signatures and verifications is a way to tie authenticity and integrity of a crate based on public key cryptography. The impliciation of this feature is that, as an end user, you can be sure that the crates that you download from crates.io have not been tampered with, and that they are signed by the correct owner of the package. 
 
-Cargo and crates.io supports both of these flows. As a crate publisher, by signing crates you provide additional security for consumers of your crate. As a crate consumer, by verifying crates you can reduce the impact of a compromise of crates.io.
+The process of `signing` involves generating a signature for a crate, using a private key, and attaching that signature when publishing a crate. The process of `verification` involves downloading a crate (using cargo) and using a _trusted_ public key to verify the authenticity (the signer) and integrity (the contents) of a crate.
 
-To simplify key management for users, cargo supports using [Sigstore](https://sigstore.dev) as a way to generate keys based on identities (GitHub) and as an immutable log that can be monitored and audited in the event of a compromise.
+To simplify key management for users, cargo supports using [Sigstore](https://sigstore.dev) as a way to generate keys based on your identity (GitHub) and as an immutable log that can be monitored and audited in the event of a compromise. By default, a publicly available instance ensures that you do not need to manage this infrastructure yourself. If you are running your own crate registry, Sigstore instance and identify provider, you can configure cargo to use that.
 
 ## Configuring
 
@@ -79,7 +84,7 @@ connector = "https://github.com/login/oauth"
 
 ## Signing
 
-Signing a new crate is automatically done on publish:
+Signing a new crate happens automatically when publishing a crate:
 
 ```
 cargo publish
@@ -87,7 +92,7 @@ cargo publish
 
 Cargo will perform the necessary steps to sign your crate before publishing, and attach the relevant information to the crates.io request.
 
-Upon receiving the new crate metadata, crates.io will verify that the signature to belong to the crate owner. This prevents a compromised cargo version to publish invalid signatures.
+Upon receiving the new crate metadata, crates.io will verify that the signature belongs to the crate owner.
 
 Signing an existing crate can be done using `cargo sign`:
 
@@ -115,11 +120,10 @@ The commands will fail if the crate (and dependencies) do not have verifiable si
 The crates.io and cargo types for new crates, will need to be modified to include the following metadata:
 
 * Signature - created based on the generated .crate file on publish
-* Email - retrieved as part of identity/GitHub lookup
-* Certificate - the public portion of the key that was used to sign the crate
+* Email of Owner - retrieved as part of identity/GitHub lookup with email scope
+* Certificate - the public certificate that can be used to verify the crate
 
 In the event that the crate is not being signed, these fields may be optional/null.
-
 
 ## Cargo publish flow
 
@@ -129,12 +133,13 @@ The cargo publish flow is summarized below:
 
 The following changes must be made to cargo when publishing a crate:
 
-1. Authenticate the publisher using Sigstore OIDC to retrieve a token
-1. Generate the temporary key and certificate request
+1. Authenticate the publisher using OIDC to retrieve a token
+1. Generate the signing key and certificate request
 1. Generate a certificate signing request and pass with token to Sigstore Fulcio. 
 1. Sign the generated .crate file using the private key
 1. Attach signature, e-mail and certificate to crates.io publish request
 
+Most of the above is already implemented in [sigstore-rs](https://github.com/sigstore/sigstore-rs).
 
 ### crates.io flow
 
@@ -146,7 +151,7 @@ The following components need changing for crates.io:
 
 1. Additional columns must be added to the PostgreSQL database
 1. HTTP API must handle a new version of NewCratePublish request with the signature data
-1. The HTTP handler verifies that the signer is allowed to sign the crate
+1. The HTTP handler talks to Rekor and verifies that the signature is valid and that owner matches certificate
 
 ## Cargo verify flow
 
@@ -154,13 +159,13 @@ The cargo flow during verification is shown below:
 
 ![verify flow](https://raw.githubusercontent.com/lulf/rfc-resources/main/sigstore/cargo_sigstore-verify.drawio.png)
 
-The following changes must be made to cargo when buildling/verifying a crate:
+The following changes must be made to cargo when building/verifying a crate:
 
 1. Retrieve the crate contents, signature and certificate.
 1. Verify that the crate contents is signed by the signature.
 1. Verify that the certificate and signature is present in the transparency log.
 
-## Cargo dependencies
+## Note on cargo dependencies
 
 The interaction with Sigstore services is implemented in the `sigstore-rs` crate, which has the following sub-dependencies:
 
@@ -192,7 +197,7 @@ Cargo may be slower if signing and verification is enabled by default. A possibl
 
 Additional metadata will be stored for each crate, which will increase storage requirements for the index.
 
-There are other approaches to key management out there, such as GPG. However, these typically have a higher effort, and supporting different systems for signing and verification could make it use the information on a compromise.
+There are other approaches to key management out there, such as GPG. However, these typically have a higher effort requiring keys to be managed by a process like TUF (The Update Framework). Sigstore is meant to capture some of these common patterns of managing keys and storing information for auditing, which lowers the barrier for signing crates.
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -206,6 +211,8 @@ There are other approaches to key management out there, such as GPG. However, th
 This design takes one step in the direction of signing and verification of crates. Some maintainers may not want to use Sigstore, in which case this would allow alternative key management systems. However, Sigstore is in the process of being supported by [NPM](https://thenewstack.io/npm-to-adopt-sigstore-for-software-supply-chain-security/), [Maven](https://blog.sonatype.com/maven-central-and-sigstore) and [Python](https://www.python.org/download/sigstore/), and it has a lot of maintainers behind it, so it makes sense to support this provider first.
 
 The impact of not doing this leaves crate owners vulnerable to a crates.io compromise. Organizations that need to have way to verify crate integrity will be left to build their own solution and private package registries.
+
+Alternative RFCs such as [this](https://github.com/withoutboats/rfcs/pull/7) describes using TUF for signing the crates.io index, and later signing crates themselves. This RFC could make that work simpler, allowing to use TUF to manage the keys of a crates.io Sigstore instance.
 
 # Prior art
 [prior-art]: #prior-art
