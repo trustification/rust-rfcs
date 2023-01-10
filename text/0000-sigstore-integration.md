@@ -9,7 +9,6 @@
 This feature enables cargo users to sign crates, and verify signatures of their dependencies, while crates.io will gain the ability to store signatures for published crates.
 
 TODO:
-* Expand on flows showing figures how cargo and crates.io interacts with Sigstore
 * Expand on future usage of the data
 * Explore a few alternatives
 
@@ -261,6 +260,8 @@ One possible evolution of this work is for the crates.io team to use the The Upd
 Using sigstore in combination with TUF to provide a signed package index.
 
 Extending other cargo commands to make use of the information stored in the transparency log when listing dependencies and other places where it makes sense.
+
+Integrating with [in-toto.io](https://in-toto.io) to provide more advanced attestation of artifacts.
 
 <!--
 Think about what the natural extension and evolution of your proposal would
