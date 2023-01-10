@@ -181,7 +181,7 @@ One specific alternative is to adopt [TUF](https://theupdateframework.io/) witho
 # Prior art
 [prior-art]: #prior-art
 
-There have been discussions on this topic in the past:
+The topic of signing crates have been brought up several times in the past:
 
 * https://github.com/rust-lang/crates.io/issues/75 - this issue raises the initial concern
 * https://github.com/sigstore/community/issues/25 - contains an attempt at sigstore support, but focusing on rustup because cargo maintainers being overloaded
@@ -202,9 +202,8 @@ A [paper](https://dl.acm.org/doi/abs/10.1145/3548606.3560596) about Sigstore on 
 [unresolved-questions]: #unresolved-questions
 
 * Should crates.io use the signing information to enforce that the signature of crate-to-be-published matches the publisher?
-* Opt-in or opt-out of signing and/or verification
-* How does it relate to TUF for signing crates.io index?
-
+* Opt-in or opt-out of signing and/or verification? Making it opt-in could increase the percentage of signed crates.
+* How does it relate to later work TUF for signing crates.io index?
 
 # Future possibilities
 [future-possibilities]: #future-possibilities
