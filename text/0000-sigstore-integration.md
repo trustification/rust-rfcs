@@ -8,11 +8,6 @@
 
 This feature enables cargo users to sign crates, and verify signatures of their dependencies, while crates.io will gain the ability to store signatures for published crates.
 
-TODO:
-* Expand on future usage of the data
-* Explore a few alternatives
-
-
 # Motivation
 [motivation]: #motivation
 
@@ -44,9 +39,10 @@ The expected outcome of this work is for cargo to automatically sign crates when
 
 ## What about TUF (The Update Framework)? 
 
- TUF is a set of defined attacks and threat models specific to software distribution systems, and a cleverly designed set of protocols to protect against them. You can use TUF to manage the root keys of a Sigstore instance, just like the [public Sigstore instance](https://blog.sigstore.dev/a-new-kind-of-trust-root-f11eeeed92ef).
+ TUF is a set of defined attacks and threat models specific to software distribution systems, and a cleverly designed set of protocols to protect against them. You can use TUF to manage the root keys of a Sigstore instance, just like the [public Sigstore instance](https://blog.sigstore.dev/a-new-kind-of-trust-root-f11eeeed92ef), but also use Sigstore to manage additional TUF roots.
  
-
+ [This article](https://dlorenc.medium.com/using-the-update-framework-in-sigstore-dc393cfe6b52) does a good job of showing the options.
+ 
 <!-- Why are we doing this? What use cases does it support? What is the expected outcome? -->
 
 # Guide-level explanation
@@ -212,7 +208,7 @@ This design takes one step in the direction of signing and verification of crate
 
 The impact of not doing this leaves crate owners vulnerable to a crates.io compromise. Organizations that need to have way to verify crate integrity will be left to build their own solution and private package registries.
 
-Alternative RFCs such as [this](https://github.com/withoutboats/rfcs/pull/7) describes using TUF for signing the crates.io index, and later signing crates themselves. This RFC could make that work simpler, allowing to use TUF to manage the keys of a crates.io Sigstore instance.
+One specific alternative is to adopt [TUF](https://theupdateframework.io/) without Sigstore, but managing a full TUF root can be a lot to manage. RFCs such as [this](https://github.com/withoutboats/rfcs/pull/7) describes using TUF for signing the crates.io index, and later signing crates themselves. 
 
 # Prior art
 [prior-art]: #prior-art
@@ -252,6 +248,7 @@ Please also take into consideration that rust sometimes intentionally diverges f
 
 * Should crates.io use the signing information to enforce that the signature of crate-to-be-published matches the publisher?
 * Opt-in or opt-out of signing and/or verification
+* How does it relate to TUF for signing crates.io index?
 
 <!--
 - What parts of the design do you expect to resolve through the RFC process before this gets merged?
@@ -262,9 +259,7 @@ Please also take into consideration that rust sometimes intentionally diverges f
 # Future possibilities
 [future-possibilities]: #future-possibilities
 
-One possible evolution of this work is for the crates.io team to use the The Update Framework (TUF) to manage trust roots for their own Fulcio instance, which would make it independent of the public Sigstore instances. 
-
-Using sigstore in combination with TUF to provide a signed package index.
+One possible evolution of this work is for crates.io to either use the The Update Framework (TUF) to manage trust roots for their own Sigstore instance, which would make it independent of the public Sigstore instances. Alternatively, use the public Sigstore instance to manage root keys for TUF.
 
 Extending other cargo commands to make use of the information stored in the transparency log when listing dependencies and other places where it makes sense.
 
