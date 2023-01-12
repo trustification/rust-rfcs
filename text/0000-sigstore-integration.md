@@ -3,15 +3,28 @@
 - RFC PR: [rust-lang/rfcs#0000](https://github.com/rust-lang/rfcs/pull/0000)
 - Rust Issue: [rust-lang/rust#0000](https://github.com/rust-lang/rust/issues/0000)
 
+TODO:
+* Add a thread model describing how this RFC helps when applied
+* How to deal with pruning identities from the transparency log (For instance, to comply with GDPR rights)
+* Consider only supporting CI/CD type of claims for identity as opposed to e-mail, to avoid the need to delete personally identifiable information later.
+
 # Summary
 [summary]: #summary
 
 This feature enables cargo users to sign crates, and verify signatures of their dependencies, while crates.io will gain the ability to store signatures for published crates.
 
+Check out the [glossary] for an overview of the different tools, terms and techniques covered in this RFC document.
+
 # Motivation
 [motivation]: #motivation
 
 Software supply chain security is an increasingly important piece for any company building and maintaining open source software. A lot of applications depend on third party dependencies without knowing who wrote the software, which can open the door to supply chain attacks. 
+
+The following chart illustrates several attack vectors facing the supply chain (src: [SLSA](https://slsa.dev/)):
+
+![SLSA: Supply-chain-threats](https://user-images.githubusercontent.com/20165/174750708-2be483ac-7e41-4bc3-8ee9-440ef33d9423.svg)
+
+This RFC aims to improve the situtation for the F and H attacks, but provides the foundation for handling other attacks like B.
 
 At present, crates.io provides the following information about published crates:
 
@@ -102,10 +115,20 @@ The commands will fail if the crate (and dependencies) do not have verifiable si
 The crates.io and cargo types for new crates, will need to be modified to include the following metadata:
 
 * Signature - created based on the generated .crate file on publish
-* Email of Owner - retrieved as part of identity/GitHub lookup with email scope
+* Identities - this must be one or more of permitted identities of the signer
 * Certificate - the public certificate that can be used to verify the crate
 
 In the event that the crate is not being signed, these fields may be optional/null.
+
+### Identities for crates.io
+
+For crates.io to verify identities, it must know which identities are allowed for a given GitHub id. Alternative ways of derive that can be:
+
+* Use the existing e-mail associated with the GitHub user (assuming this is always present). The downside of this is users cannot have multiple e-mails associated with their signing.
+* Allow users on crates.io to manage a set of allowed signing identities, either derived from e-mails associated with their GitHub ids, or being able to add/verify additional e-mail addresses.
+* Add per package/crate configuration for allowed signing identities, allowing multiple owners to 'share' signing identities. Given that owners can be GH organizations, maybe it's better handled there.
+* Look at crate metadata such as authors (but this has kl)
+* 
 
 ## Cargo publish flow
 
@@ -119,7 +142,7 @@ The following changes must be made to cargo when publishing a crate:
 1. Generate the signing key and certificate request
 1. Generate a certificate signing request and pass with token to Sigstore Fulcio. 
 1. Sign the generated .crate file using the private key
-1. Attach signature, e-mail and certificate to crates.io publish request
+1. Attach signature, identity and certificate to crates.io publish request
 
 Most of the above is already implemented in [sigstore-rs](https://github.com/sigstore/sigstore-rs).
 
@@ -208,9 +231,33 @@ A [paper](https://dl.acm.org/doi/abs/10.1145/3548606.3560596) about Sigstore on 
 # Future possibilities
 [future-possibilities]: #future-possibilities
 
-One possible evolution of this work is for crates.io to either use the The Update Framework (TUF) to manage trust roots for their own Sigstore instance, which would make it independent of the public Sigstore instances. Alternatively, use the public Sigstore instance to manage root keys for TUF.
+* Use the The Update Framework (TUF) to manage trust roots for their own Sigstore instance, which would make it independent of the public Sigstore instances. 
+* Use the public Sigstore instance to manage root keys for TUF.
+* Extending other cargo commands to make use of the information stored in the transparency log when listing dependencies and other places where it makes sense.
+* Integrating with [in-toto.io](https://in-toto.io) to provide more advanced attestation of artifacts.
+* Build source attestation: adding special modes for public CI systems such as GitHub actions where trusted builders can sign to attest that artifact is built from a particular source.
 
-Extending other cargo commands to make use of the information stored in the transparency log when listing dependencies and other places where it makes sense.
+# Glossary
+[glossary]: #glossary
 
-Integrating with [in-toto.io](https://in-toto.io) to provide more advanced attestation of artifacts.
+Overview of the tools, techniques and terms used throughout this RFC document (taken from [the NPM RFC](https://github.com/npm/rfcs/blob/main/accepted/0049-link-packages-to-source-and-build.md#glossary))
+
+The definitions are not exhaustive and only cover how it's been used in this document and the npm context.
+
+- **Attestation**: Verifiable metadata (signed statement) about one or more software artifacts. 
+- **Build provenance**: Verifiable information about software artifacts describing where, when and how something was produced.
+- **[Cosign](https://github.com/sigstore/cosign)**: CLI tool used to interact with Sigstore: Focused on signing container images.
+- **[DSSE Signature Envelope](https://github.com/secure-systems-lab/dsse)**: Data structure for passing around interoperable signatures.
+- **[Fulcio](https://docs.sigstore.dev/fulcio/overview/)**: Certificate Authority that can notarize log-ins (i.e. verify and attest to legitimacy) with OIDC identities (e.g. Google or GitHub accounts), returning a time-limited certificate that's used to prove that you had access to an identity (e.g. email) at the time of signing.
+- **Keyless signing with disposable/ephemeral keys**: Signing technique where you never handle long-lived signing keys, instead short-lived keys are used that only live long enough for the signing to occur. Sometimes referred to as "keyless signing".
+- **Offline verification**:  In this context, when a signature has been uploaded to Rekor a detached copy is returned that can be verified offline.
+- **OpenID Connect ([OIDC](https://openid.net/specs/openid-connect-core-1_0.html)) identity or ID token**: Verifiable information that the user or identity has been authenticated by a OIDC provider. The ID token is a JSON Web Token (JWT).
+- **OpenID Connect ([OIDC](https://openid.net/specs/openid-connect-core-1_0.html)) identity provider**:  Authenticates users and issues verifiable id tokens that includes identity information, e.g. email. Examples include Google or GitHub.
+- **Package hijacking attack**: Where a malicious version of an existing open source package gets uploaded to the registry. The [eslint-scope](https://eslint.org/blog/2018/07/postmortem-for-malicious-package-publishes) attack was a notable example of this kind of attack, and it frequently occurs due to compromised npm credentials but can also happen due to compromised builds or CI/CD.
+- **[Rekor](https://docs.sigstore.dev/rekor/overview)**: Public immutable tamper-resistant ledger of signed software artifacts. Verifies that the Fulcio certificate was valid at the time of signing.
+- **Publish attestation**: Verifiable metadata stating that the npm registry has authorized and accepted a published package version.
+- **[Sigstore](https://www.sigstore.dev/)**: Public good infrastructure and standard for signing and verifying artifacts using short-lived “disposable keys”.
+- **[SLSA](https://slsa.dev/)**: Comprehensive checklists of best practices for securing the software supply chain. SLSA levels specify how secure the different components are.
+- **Software supply chain**: The series of actions performed to create a software product. These steps usually begin with users committing to a version control system and end with the software product's installation on a client's system.
+- **Trusted builder**: Immutable build system that can't be modified by the source repository where it's being executed.
 
