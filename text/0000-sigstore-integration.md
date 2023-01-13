@@ -4,7 +4,7 @@
 - Rust Issue: [rust-lang/rust#0000](https://github.com/rust-lang/rust/issues/0000)
 
 TODO:
-* Add a thread model describing how this RFC helps when applied
+* Add a threat model describing how this RFC helps when applied
 * How to deal with pruning identities from the transparency log (For instance, to comply with GDPR rights)
 * Consider only supporting CI/CD type of claims for identity as opposed to e-mail, to avoid the need to delete personally identifiable information later.
 
@@ -44,7 +44,7 @@ The proposal is to improve on the current situation, by supporting these workflo
 * Automatic signing of crates when publishing by crate publishers
 * Automatic verification of crates and their dependencies by crate consumers
 
-The Sigstore project provides publicly available instance of both Fulcio and Rekor, which avoid overloading crates.io maintainers with setting up additional infrastructure. 
+The Sigstore project provides publicly available instances of both Fulcio and Rekor, which avoid overloading crates.io maintainers with setting up additional infrastructure.
 
 Since crates.io already uses GitHub authenticating users, adding automatic signing based on a GitHub ID is not a significant change for users.
 
